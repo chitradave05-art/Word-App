@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lane Racer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    #game {
+      position: relative;
+      width: 300px;
+      height: 500px;
+      background: #555;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    .lane {
+      position: absolute;
+      width: 100px;
+      height: 100%;
+      border-left: 2px dashed #eee;
+      border-right: 2px dashed #eee;
+    }
+
+    .lane:nth-child(1) { left: 0; }
+    .lane:nth-child(2) { left: 100px; }
+    .lane:nth-child(3) { left: 200px; }
+
+    #car {
+      position: absolute;
+      width: 60px;
+      height: 80px;
+      background: red;
+      bottom: 20px;
+      left: 120px;
+      border-radius: 10px;
+    }
+
+    .enemy {
+      position: absolute;
+      width: 60px;
+      height: 80px;
+      background: yellow;
+      top: -100px;
+      border-radius: 10px;
+    }
+
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-weight: bold;
+    }
+
+    #gameOver {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game">
+    <div class="lane"></div>
+    <div class="lane"></div>
+    <div class="lane"></div>
+
+    <div id="car"></div>
+    <div id="score">Score: 0</div>
+
+    <div id="gameOver">
+      <h2>💥 Game Over</h2>
+      <button onclick="location.reload()">Restart</button>
+    </div>
+  </div>
+
+  <script>
+    const car = document.getElementById("car");
+    const game = document.getElementById("game");
+    const scoreEl = document.getElementById("score");
+    const gameOverEl = document.getElementById("gameOver");
+
+    const lanes = [20, 120, 220];
+    let currentLane = 1;
+    let enemies = [];
+    let score = 0;
+    let speed = 4;
+    let gameRunning = true;
+
+    document.addEventListener("keydown", e => {
+      if (!gameRunning) return;
+
+      if (e.key === "ArrowLeft" && currentLane > 0) {
+        currentLane--;
+      }
+      if (e.key === "ArrowRight" && currentLane < 2) {
+        currentLane++;
+      }
+      car.style.left = lanes[currentLane] + "px";
+    });
+
+    function spawnEnemy() {
+      const enemy = document.createElement("div");
+      enemy.classList.add("enemy");
+      const lane = Math.floor(Math.random() * 3);
+      enemy.style.left = lanes[lane] + "px";
+      enemy.style.top = "-100px";
+      game.appendChild(enemy);
+      enemies.push(enemy);
+    }
+
+    function update() {
+      if (!gameRunning) return;
+
+      enemies.forEach((enemy, index) => {
+        let top = parseInt(enemy.style.top);
+        enemy.style.top = top + speed + "px";
+
+        // Collision
+        const carRect = car.getBoundingClientRect();
+        const enemyRect = enemy.getBoundingClientRect();
+
+        if (
+          carRect.left < enemyRect.right &&
+          carRect.right > enemyRect.left &&
+          carRect.top < enemyRect.bottom &&
+          carRect.bottom > enemyRect.top
+        ) {
+          endGame();
+        }
+
+        if (top > 500) {
+          enemy.remove();
+          enemies.splice(index, 1);
+          score++;
+          scoreEl.textContent = "Score: " + score;
+          if (score % 5 === 0) speed++;
+        }
+      });
+
+      requestAnimationFrame(update);
+    }
+
+    function endGame() {
+      gameRunning = false;
+      gameOverEl.style.display = "flex";
+    }
+
+    setInterval(() => {
+      if (gameRunning) spawnEnemy();
+    }, 1200);
+
+    update();
+  </script>
+</body>
+</html>
