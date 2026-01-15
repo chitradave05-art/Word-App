@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>One Word a Day</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    h1 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    select, button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1rem;
+    }
+
+    select {
+      cursor: pointer;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      background: #ffffff;
+      color: #5a4fcf;
+    }
+
+    .secondary {
+      background: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+
+    .word {
+      font-size: 2.2rem;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .definition {
+      text-align: center;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .streak {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .history {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      max-height: 120px;
+      overflow-y: auto;
+      opacity: 0.95;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>📘 One Word a Day</h1>
+
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+
+    <div class="word" id="word">Loading…</div>
+    <div class="definition" id="definition"></div>
+
+    <button id="speakBtn" class="secondary">🔊 Pronounce</button>
+    <button id="learnBtn">✔ I learned this word</button>
+
+    <div class="streak" id="streak"></div>
+    <div class="history" id="history"></div>
+  </div>
+
+  <script>
+    const API = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+
+    const WORDS = {
+      easy: ["happy", "kind", "simple", "bright"],
+      medium: ["resilient", "curious", "eloquent", "methodical"],
+      hard: ["ephemeral", "ubiquitous", "parsimonious", "obfuscate"]
+    };
+
+    const today = new Date().toDateString();
+
+    let streak = parseInt(localStorage.getItem("streak") || "0");
+    let history = JSON.parse(localStorage.getItem("history") || "[]");
+
+    const wordEl = document.getElementById("word");
+    const defEl = document.getElementById("definition");
+    const streakEl = document.getElementById("streak");
+    const historyEl = document.getElementById("history");
+    const speakBtn = document.getElementById("speakBtn");
+    const learnBtn = document.getElementById("learnBtn");
+    const difficultySelect = document.getElementById("difficulty");
+
+    difficultySelect.value = localStorage.getItem("difficulty") || "easy";
+
+    difficultySelect.onchange = () => {
+      localStorage.setItem("difficulty", difficultySelect.value);
+      localStorage.removeItem("dailyWord");
+      loadWord();
+    };
+
+    async function fetchWord(word) {
+      try {
+        const res = await fetch(API + word);
+        const data = await res.json();
+        return {
+          word: data[0].word,
+          definition: data[0].meanings[0].definitions[0].definition
+        };
+      } catch {
+        return { word, definition: "Definition unavailable." };
+      }
+    }
+
+    async function loadWord() {
+      const saved = JSON.parse(localStorage.getItem("dailyWord"));
+      if (saved && saved.day === today) {
+        render(saved);
+        return;
+      }
+
+      const pool = WORDS[difficultySelect.value];
+      const baseWord = pool[Math.floor(Math.random() * pool.length)];
+      const result = await fetchWord(baseWord);
+
+      const daily = { ...result, day: today };
+      localStorage.setItem("dailyWord", JSON.stringify(daily));
+      localStorage.removeItem("learnedToday");
+
+      render(daily);
+    }
+
+    function render(data) {
+      wordEl.textContent = data.word;
+      defEl.textContent = data.definition;
+      streakEl.textContent = `🔥 Streak: ${streak} day${streak === 1 ? "" : "s"}`;
+      historyEl.innerHTML = history.map(w => `• ${w}`).join("<br>");
+    }
+
+    learnBtn.onclick = () => {
+      if (localStorage.getItem("learnedToday") === today) return;
+
+      streak++;
+      localStorage.setItem("streak", streak);
+      localStorage.setItem("learnedToday", today);
+
+      history.unshift(wordEl.textContent);
+      history = history.slice(0, 7);
+      localStorage.setItem("history", JSON.stringify(history));
+
+      streakEl.textContent = `🔥 Streak: ${streak} day${streak === 1 ? "" : "s"}`;
+    };
+
+    speakBtn.onclick = () => {
+      const utter = new SpeechSynthesisUtterance(wordEl.textContent);
+      speechSynthesis.speak(utter);
+    };
+
+    loadWord();
+  </script>
+</body>
+</html>
